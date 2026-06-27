@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>¡Limpia al Hipo!</title>
+    <style>
+        /* --- ESTILOS VISUALES (PASTEL Y HIPOPÓTAMO CSS) --- */
+        :root {
+            --primary: #9b5bb6;
+            --secondary: #d9ace6;
+            --bg-color: #fce4ec;
+            --hippo-main: #d9ace6;
+            --hippo-light: #eedbf5;
+            --hippo-mouth: #6d2b33;
+            --text: #4a4a4a;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-color) 0%, #e8eaf6 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden; touch-action: none;
+        }
+
+        .screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            flex: 1; text-align: center; width: 100%; position: absolute; top: 0; left: 0; height: 100%;
+        }
+
+        .screen.active { display: flex; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 25px;
+            padding: 40px 30px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            max-width: 90%; width: 450px; z-index: 10;
+        }
+        h1 { color: var(--primary); margin-bottom: 20px; font-size: 32px; }
+        p { font-size: 20px; line-height: 1.5; margin-bottom: 20px; }
+        .btn {
+            background: var(--primary); color: white; border: none; padding: 15px 40px;
+            font-size: 22px; font-weight: bold; border-radius: 40px; cursor: pointer;
+            box-shadow: 0 5px 15px rgba(155, 91, 182, 0.4); transition: transform 0.2s;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        #game-screen { padding-top: 20px; justify-content: flex-start; }
+
+        .instruction-box {
+            background: white; padding: 15px 30px; border-radius: 30px; font-weight: bold;
+            font-size: 22px; color: var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin: 20px auto; max-width: 90%; z-index: 10; border: 3px solid var(--secondary);
+            transition: transform 0.3s ease;
+        }
+
+        /* --- Diseño del Hipopótamo en CSS --- */
+        .hippo-container { position: relative; width: 100%; display: flex; justify-content: center; margin-top: 5px; }
+        .hippo { position: relative; width: 320px; height: 380px; animation: bounceIdle 3s infinite ease-in-out; }
+        @keyframes bounceIdle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
+        .ear {
+            width: 50px; height: 60px; background: var(--hippo-main); border-radius: 50%;
+            position: absolute; top: 20px; box-shadow: inset -5px -5px 10px rgba(0,0,0,0.1);
+        }
+        .ear.left { left: 40px; transform: rotate(-20deg); }
+        .ear.right { right: 40px; transform: rotate(20deg); }
+
+        .face {
+            width: 240px; height: 200px; background: var(--hippo-main); border-radius: 45%;
+            position: absolute; top: 40px; left: 40px; box-shadow: inset -10px -10px 20px rgba(0,0,0,0.05);
+        }
+
+        .eye { width: 35px; height: 45px; background: white; border-radius: 50%; position: absolute; top: 40px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .eye.left { left: 50px; } .eye.right { right: 50px; }
+        .pupil { width: 15px; height: 20px; background: #333; border-radius: 50%; position: absolute; bottom: 8px; right: 8px; }
+
+        .muzzle {
+            width: 320px; height: 220px; background: var(--hippo-light); border-radius: 50% 50% 45% 45%;
+            position: absolute; top: 100px; left: -40px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .nostril { width: 25px; height: 35px; background: #c3a1cc; border-radius: 50%; position: absolute; top: 25px; }
+        .nostril.left { left: 80px; transform: rotate(-15deg); } .nostril.right { right: 80px; transform: rotate(15deg); }
+
+        /* Boca */
+        .mouth {
+            width: 260px; height: 140px; background: var(--hippo-mouth); border-radius: 20px 20px 60px 60px;
+            margin-top: 70px; position: relative; overflow: hidden; border: 6px solid #e2a6d4;
+            box-shadow: inset 0 20px 30px rgba(0,0,0,0.4);
+        }
+
+        .teeth-row { position: absolute; width: 100%; display: flex; justify-content: center; gap: 4px; }
+        .teeth-top { top: -2px; height: 45px; } .teeth-bottom { bottom: -2px; height: 45px; }
+
+        .tooth { width: 36px; background: #fff; border: 1px solid #ddd; position: relative; }
+        .teeth-top .tooth { border-radius: 0 0 12px 12px; } .teeth-bottom .tooth { border-radius: 12px 12px 0 0; }
+
+        .tongue {
+            position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); width: 180px; height: 100px;
+            background: #ff8fb3; border-radius: 50%; box-shadow: inset 0 15px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Residuos */
+        .residue {
+            position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center;
+            z-index: 2; transition: opacity 0.1s;
+        }
+        .residue-stain { background-image: radial-gradient(#6d4c41 20%, #8d6e63 80%); border-radius: 50%; opacity: 0.9; }
+        .residue-green { background-image: radial-gradient(#689f38 20%, #8bc34a 80%); border-radius: 50%; opacity: 0.9; }
+
+        /* --- HERRAMIENTAS REALISTAS (SVG) --- */
+        .tools-shelf {
+            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);
+            padding: 15px 25px; border-radius: 40px; display: flex; gap: 25px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.1); z-index: 100;
+        }
+
+        .tool {
+            width: 75px; height: 75px; background: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: grab; position: relative;
+            touch-action: none; transition: transform 0.2s, opacity 0.3s; z-index: 1000;
+        }
+
+        /* Arrastre general */
+        .tool.dragging { position: fixed; pointer-events: none; transition: none; box-shadow: 0 15px 25px rgba(0,0,0,0.4); }
+
+        /* Efectos específicos por herramienta */
+        .tool.paste-tool.dragging { transform: scale(1.3) rotate(160deg); }
+        .tool.water-tool.dragging { transform: scale(1.3) rotate(-35deg); }
+        .tool.brush-tool.dragging { transform: scale(1.3) rotate(-15deg); }
+
+        /* Pasta asomándose */
+        .paste-drop {
+            position: absolute; width: 12px; height: 18px; background: #fff; border-radius: 50%;
+            bottom: -15px; left: 50%; transform: translateX(-50%);
+            animation: drip 1s infinite alternate; display: none;
+            box-shadow: inset -2px -2px 4px rgba(0,0,0,0.2);
+        }
+        .tool.paste-tool.dragging .paste-drop { display: block; }
+        @keyframes drip { 0% { height: 10px; } 100% { height: 28px; } }
+
+        /* Indicador de pasta en el cepillo */
+        .paste-indicator {
+            position: absolute; top: -5px; right: 0; width: 25px; height: 15px;
+            background: #fff; border-radius: 10px 10px 5px 5px; box-shadow: inset -2px -2px 5px rgba(0,0,0,0.2);
+            display: none;
+        }
+        .tool.has-paste .paste-indicator { display: block; }
+
+        /* Partículas de agua y espuma */
+        .water-particle {
+            position: fixed; width: 10px; height: 14px; background: #4fc3f7; border-radius: 50% 50% 40% 40%;
+            pointer-events: none; z-index: 1000; animation: fall 0.5s linear forwards;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(80px); opacity: 0; }
+        }
+
+        .foam-particle {
+            position: fixed; width: 18px; height: 18px;
+            background: radial-gradient(circle, #fff 40%, rgba(200,240,255,0.7) 100%);
+            border-radius: 50%; pointer-events: none; z-index: 1000;
+            animation: floatAway 0.8s ease-out forwards;
+        }
+        @keyframes floatAway {
+            0% { transform: scale(0.5); opacity: 0.9; }
+            100% { transform: scale(2) translate(15px, -30px); opacity: 0; }
+        }
+
+        #stars-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;
+        }
+        .star-anim { position: absolute; font-size: 40px; animation: floatUp 1s ease-out forwards; }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Pantalla de Inicio -->
+    <div id="intro-screen" class="screen active">
+        <div class="glass-panel">
+            <h1>🦛 ¡Limpia al Hipo!</h1>
+            <p>¡Nuestro amiguito hipopótamo tiene sus dientitos sucios!</p>
+            <p>Ayúdalo usando los objetos mágicos para que su sonrisa brille.<br><br><strong>(¡Sube el volumen de tu dispositivo para escuchar el agua, la pasta y la espuma!)</strong></p>
+            <button class="btn" id="start-btn">¡EMPEZAR A JUGAR!</button>
+        </div>
+    </div>
+
+    <!-- Pantalla del Juego -->
+    <div id="game-screen" class="screen">
+        <div class="instruction-box" id="instruction-text">Cargando...</div>
+
+        <div class="game-area">
+            <div class="hippo-container">
+                <div class="hippo" id="hippo-div">
+                    <div class="ear left"></div>
+                    <div class="ear right"></div>
+                    <div class="face">
+                        <div class="eye left"><div class="pupil"></div></div>
+                        <div class="eye right"><div class="pupil"></div></div>
+                        <div class="muzzle">
+                            <div class="nostril left"></div>
+                            <div class="nostril right"></div>
+                            <div class="mouth" id="mouth">
+                                <div class="teeth-row teeth-top" id="teeth-top"></div>
+                                <div class="teeth-row teeth-bottom" id="teeth-bottom"></div>
+                                <div class="tongue" id="tongue"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tools-shelf" id="tools-shelf">
+            <!-- Herramienta: Regaderita -->
+            <div class="tool draggable water-tool" id="water" data-id="water">
+                <svg viewBox="0 0 100 80" width="60" height="48">
+                  <path d="M30,30 L70,30 L80,80 L20,80 Z" fill="#4fc3f7"/>
+                  <path d="M30,40 C10,30 10,70 25,70" fill="none" stroke="#0288d1" stroke-width="8" stroke-linecap="round"/>
+                  <path d="M70,60 L95,45 L90,40 L67,50 Z" fill="#0288d1"/>
+                  <ellipse cx="92" cy="42" rx="4" ry="12" transform="rotate(30 92 42)" fill="#ffd54f"/>
+                </svg>
+            </div>
+            
+            <!-- Herramienta: Pasta de Dientes -->
+            <div class="tool draggable paste-tool" id="toothpaste" data-id="toothpaste">
+                <svg viewBox="0 0 40 100" width="30" height="75">
+                  <path d="M10,20 Q0,50 5,95 L35,95 Q40,50 30,20 Z" fill="#ef5350"/>
+                  <rect x="5" y="90" width="30" height="10" fill="#c62828"/>
+                  <rect x="12" y="10" width="16" height="10" fill="#ffffff"/>
+                  <path d="M15,10 L25,10 L22,0 L18,0 Z" fill="#e0e0e0"/>
+                </svg>
+                <div class="paste-drop"></div>
+            </div>
+
+            <!-- Herramienta: Cepillo -->
+            <div class="tool draggable brush-tool" id="toothbrush" data-id="toothbrush">
+                <svg viewBox="0 0 100 30" width="70" height="21">
+                  <rect x="0" y="8" width="70" height="14" rx="7" fill="#66bb6a"/>
+                  <rect x="65" y="8" width="30" height="14" rx="4" fill="#388e3c"/>
+                  <path d="M70,8 L70,0 L95,0 L95,8 Z" fill="#ffffff" />
+                  <path d="M72,8 L72,0 L75,0 L75,8 Z" fill="#e0e0e0" />
+                  <path d="M82,8 L82,0 L85,0 L85,8 Z" fill="#e0e0e0" />
+                </svg>
+                <div class="paste-indicator"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla Final -->
+    <div id="outro-screen" class="screen">
+        <div class="glass-panel">
+            <h1>✨ ¡Qué Brillante! ✨</h1>
+            <p>¡Lograste dejar al hipopótamo súper limpio y feliz!</p>
+            <p>Recuerda que estas acciones de higiene cuidan tu salud personal y colectiva todos los días.</p>
+            <button class="btn" onclick="location.reload()">¡Jugar de Nuevo!</button>
+        </div>
+    </div>
+
+    <div id="stars-container"></div>
+    
+    <script>
+        // --- SINTETIZADOR DE AUDIO (Web Audio API) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx, bgmOscId;
+
+        function initAudio() {
+            if(audioCtx) return;
+            audioCtx = new AudioContext();
+            startBGM();
+        }
+
+        function startBGM() {
+            const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 392.00, 329.63, 293.66];
+            let noteIdx = 0;
+            bgmOscId = setInterval(() => {
+                if(audioCtx && audioCtx.state !== 'running') return;
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'triangle'; osc.frequency.value = notes[noteIdx];
+                noteIdx = (noteIdx + 1) % notes.length;
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 1.2);
+            }, 1200);
+        }
+
+        function playPasteSound() {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function playStarSound() {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = 'square'; osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(2000, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function playSuccessMelody() {
+            if(!audioCtx) return;
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = 'triangle'; osc.frequency.value = freq;
+                const startTime = audioCtx.currentTime + (i * 0.15);
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.08, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+                osc.start(startTime); osc.stop(startTime + 0.4);
+            });
+        }
+
+        let scrubSource, scrubGain;
+        function startScrubSound() {
+            if(!audioCtx || scrubSource) return;
+            const bufferSize = audioCtx.sampleRate * 1;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            scrubSource = audioCtx.createBufferSource(); scrubSource.buffer = buffer; scrubSource.loop = true;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1500;
+            scrubGain = audioCtx.createGain(); scrubGain.gain.value = 0.05;
+            scrubSource.connect(filter); filter.connect(scrubGain); scrubGain.connect(audioCtx.destination);
+            scrubSource.start();
+        }
+        function stopScrubSound() {
+            if(scrubSource) { scrubSource.stop(); scrubSource.disconnect(); scrubSource = null; }
+        }
+
+        let waterSource, waterGain;
+        function startWaterSound() {
+            if(!audioCtx || waterSource) return;
+            const bufferSize = audioCtx.sampleRate * 2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            let b0=0, b1=0, b2=0;
+            for (let i = 0; i < bufferSize; i++) {
+                let white = Math.random() * 2 - 1;
+                b0 = 0.99886 * b0 + white * 0.0555179; b1 = 0.99332 * b1 + white * 0.0750759; b2 = 0.96900 * b2 + white * 0.1538520;
+                data[i] = (b0 + b1 + b2 + white * 0.5362) * 0.1;
+            }
+            waterSource = audioCtx.createBufferSource(); waterSource.buffer = buffer; waterSource.loop = true;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 500;
+            waterGain = audioCtx.createGain(); waterGain.gain.value = 0.4;
+            waterSource.connect(filter); filter.connect(waterGain); waterGain.connect(audioCtx.destination);
+            waterSource.start();
+        }
+        function stopWaterSound() {
+            if(waterSource) { waterSource.stop(); waterSource.disconnect(); waterSource = null; }
+        }
+
+        // --- MANEJO DEL JUEGO DIRECTO --- //
+
+        const foodEmojis = ['🥦', '🍓', '🍪', '🍕', '🧀', '🍗'];
+        const steps = [
+            { id: "rinse_brush", instruction: "1. ¡Echa agüita en el cepillo con tu regadera! 🚿➡️🪥", activeTools: ["water"], targetTarget: "toothbrush", checkType: "drop", onComplete: () => { playStarSound(); createStars(document.getElementById("toothbrush")); } },
+            { id: "apply_paste", instruction: "2. ¡Aplasta la pasta sobre el cepillo! 🧴➡️🪥", activeTools: ["toothpaste"], targetTarget: "toothbrush", checkType: "drop", onComplete: () => { document.getElementById("toothbrush").classList.add("has-paste"); playPasteSound(); createStars(document.getElementById("toothbrush")); } },
+            { id: "brush_teeth", instruction: "3. ¡Frota y echa espuma por todos los dientitos sucios! 🪥➡️🦷", activeTools: ["toothbrush"], targetTarget: "dirt-tooth", checkType: "scrub" },
+            { id: "brush_tongue", instruction: "4. ¡Ahora talla la lengüita que quedó sucia! 🪥➡️👅", activeTools: ["toothbrush"], targetTarget: "dirt-tongue", checkType: "scrub" },
+            { id: "rinse_mouth", instruction: "5. ¡Enjuaga su boca con chorritos de agua! 🚿➡️🦛", activeTools: ["water"], targetTarget: "mouth", checkType: "drop", onComplete: () => { document.getElementById("toothbrush").classList.remove("has-paste"); playSuccessMelody(); } }
+        ];
+
+        let currentStep = 0, isDragging = false, draggedElement = null, originalParent = null;
+        let dragOffsetX = 0, dragOffsetY = 0, targetDirtList = [], isScrubbing = false;
+        let mouseX = 0, mouseY = 0, waterInterval = null, foamInterval = null;
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            initAudio();
+            document.getElementById("intro-screen").classList.remove("active");
+            document.getElementById("game-screen").classList.add("active");
+            buildMouth(); loadStep(0); setupDragAndDrop();
+        });
+
+        function createResidue(parent, type, size) {
+            const el = document.createElement("div"); el.className = `residue ${type}`;
+            el.style.width = size + "px"; el.style.height = size + "px";
+            if(Math.random() > 0.5) {
+                el.innerText = foodEmojis[Math.floor(Math.random() * foodEmojis.length)];
+                el.style.backgroundImage = 'none'; el.style.fontSize = (size - 2) + "px";
+            }
+            let left = Math.random() * (parent.classList.contains("tooth") ? 10 : 80);
+            let top = Math.random() * (parent.classList.contains("tooth") ? 20 : 50);
+            if(parent.id === "tongue") { left += 30; top += 10; }
+            el.style.left = left + "px"; el.style.top = top + "px";
+            el.dataset.health = 100; parent.appendChild(el);
+        }
+
+        function buildMouth() {
+            const topRow = document.getElementById("teeth-top"), bottomRow = document.getElementById("teeth-bottom"), tongue = document.getElementById("tongue");
+            for(let i=0; i<6; i++) {
+                const tTop = document.createElement("div"); tTop.className = "tooth"; topRow.appendChild(tTop);
+                createResidue(tTop, "dirt-tooth residue-stain", 20);
+                const tBot = document.createElement("div"); tBot.className = "tooth"; bottomRow.appendChild(tBot);
+                createResidue(tBot, "dirt-tooth residue-green", 20);
+            }
+            for(let i=0; i<8; i++) createResidue(tongue, "dirt-tongue residue-stain", 25);
+        }
+
+        function loadStep(index) {
+            if(index >= steps.length) { endGame(); return; }
+            currentStep = index; const step = steps[currentStep];
+            const box = document.getElementById("instruction-text");
+            box.style.transform = "scale(1.1)"; setTimeout(()=> box.style.transform = "scale(1)", 200);
+            box.innerText = step.instruction;
+            
+            document.querySelectorAll(".tool").forEach(tool => {
+                tool.classList.remove("disabled"); tool.classList.add("draggable");
+            });
+            if(step.checkType === "scrub") { targetDirtList = Array.from(document.querySelectorAll(`.${step.targetTarget}`)); }
+        }
+
+        function setupDragAndDrop() {
+            document.querySelectorAll(".tool").forEach(t => { t.addEventListener("mousedown", onDragStart, {passive: false}); t.addEventListener("touchstart", onDragStart, {passive: false}); });
+            document.addEventListener("mousemove", onDragMove, {passive: false}); document.addEventListener("touchmove", onDragMove, {passive: false});
+            document.addEventListener("mouseup", onDragEnd); document.addEventListener("touchend", onDragEnd);
+        }
+
+        function onDragStart(e) {
+            const target = e.target.closest('.tool');
+            if(!target || !target.classList.contains("draggable")) return;
+            if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            e.preventDefault(); isDragging = true; draggedElement = target; originalParent = target.parentNode;
+            mouseX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            mouseY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            const rect = target.getBoundingClientRect(); dragOffsetX = mouseX - rect.left; dragOffsetY = mouseY - rect.top;
+
+            target.style.width = target.offsetWidth + 'px'; target.style.height = target.offsetHeight + 'px';
+            document.body.appendChild(target); target.classList.add("dragging");
+            draggedElement.style.left = (mouseX - dragOffsetX) + 'px'; draggedElement.style.top = (mouseY - dragOffsetY) + 'px';
+
+            if(target.id === "water") {
+                startWaterSound();
+                waterInterval = setInterval(createWaterDrop, 100);
+            }
+        }
+
+        function onDragMove(e) {
+            if(!isDragging || !draggedElement) return;
+            e.preventDefault();
+            mouseX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            mouseY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            draggedElement.style.left = (mouseX - dragOffsetX) + 'px'; draggedElement.style.top = (mouseY - dragOffsetY) + 'px';
+
+            const step = steps[currentStep];
+            if(step && step.checkType === "scrub" && step.activeTools.includes(draggedElement.id)) {
+                checkScrubbing();
+                if(isDragging && !isScrubbing) {
+                    isScrubbing = true; startScrubSound();
+                    foamInterval = setInterval(createFoam, 150);
+                }
+            }
+        }
+
+        function onDragEnd() {
+            if(!isDragging || !draggedElement) return;
+            stopWaterSound(); clearInterval(waterInterval);
+            stopScrubSound(); clearInterval(foamInterval); isScrubbing = false;
+
+            const step = steps[currentStep];
+            const rect = draggedElement.getBoundingClientRect();
+            draggedElement.style.display = 'none';
+            const dropTarget = document.elementFromPoint(rect.left + rect.width/2, rect.top + rect.height/2);
+            draggedElement.style.display = 'flex';
+
+            if(step && step.checkType === "drop" && dropTarget) {
+                if(dropTarget.closest(`#${step.targetTarget}`) && step.activeTools.includes(draggedElement.id)) {
+                    if(step.onComplete) step.onComplete();
+                    loadStep(currentStep + 1);
+                }
+            }
+            if(!draggedElement) return;
+            draggedElement.classList.remove("dragging"); draggedElement.style.cssText = "";
+            originalParent.appendChild(draggedElement); isDragging = false; draggedElement = null;
+        }
+
+        // --- SISTEMA DE PARTÍCULAS (Agua y Espuma) --- //
+        function createWaterDrop() {
+            const drop = document.createElement("div"); drop.className = "water-particle";
+            drop.style.left = (mouseX - 20) + "px"; drop.style.top = (mouseY + 30) + "px";
+            document.body.appendChild(drop);
+            setTimeout(() => drop.remove(), 500);
+        }
+
+        function createFoam() {
+            const foam = document.createElement("div"); foam.className = "foam-particle";
+            foam.style.left = (mouseX + 20 + Math.random()*20-10) + "px";
+            foam.style.top = (mouseY - 10 + Math.random()*20-10) + "px";
+            document.body.appendChild(foam);
+            setTimeout(() => foam.remove(), 800);
+        }
+
+        function checkScrubbing() {
+            if(targetDirtList.length === 0) return;
+            const brushRect = draggedElement.getBoundingClientRect();
+            let remainingDirt = 0;
+            targetDirtList.forEach((dirt) => {
+                if(dirt.style.display === "none") return;
+                const dirtRect = dirt.getBoundingClientRect();
+                if (brushRect.left < dirtRect.right && brushRect.right > dirtRect.left && 
+                    brushRect.top < dirtRect.bottom && brushRect.bottom > dirtRect.top) {
+                    let health = parseFloat(dirt.dataset.health) - 15;
+                    dirt.dataset.health = health; dirt.style.opacity = (health / 100).toString();
+                    if(health <= 0) { dirt.style.display = "none"; playStarSound(); createStars(dirt); } 
+                    else remainingDirt++;
+                } else remainingDirt++;
+            });
+
+            if(remainingDirt === 0) {
+                targetDirtList = []; const step = steps[currentStep];
+                if(step.onComplete) step.onComplete();
+                stopScrubSound(); clearInterval(foamInterval); isScrubbing = false;
+                if(!draggedElement) return;
+                draggedElement.classList.remove("dragging"); draggedElement.style.cssText = "";
+                originalParent.appendChild(draggedElement); isDragging = false; draggedElement = null;
+                setTimeout(() => loadStep(currentStep + 1), 500);
+            }
+        }
+
+        function createStars(targetElement) {
+            const rect = targetElement.getBoundingClientRect(), container = document.getElementById("stars-container");
+            for(let i=0; i<3; i++) {
+                const star = document.createElement("div"); star.className = "star-anim"; star.innerText = "⭐";
+                star.style.left = (rect.left + Math.random() * rect.width) + "px";
+                star.style.top = (rect.top + Math.random() * rect.height) + "px";
+                container.appendChild(star); setTimeout(() => star.remove(), 1000);
+            }
+        }
+
+        function endGame() {
+            document.getElementById("game-screen").classList.remove("active");
+            document.getElementById("outro-screen").classList.add("active");
+            playSuccessMelody();
+            setInterval(() => {
+                const star = document.createElement("div"); star.className = "star-anim";
+                star.innerText = Math.random() > 0.5 ? "⭐" : "✨";
+                star.style.left = (Math.random() * window.innerWidth) + "px";
+                star.style.top = window.innerHeight + "px";
+                star.style.animation = "floatUp 4s ease-out forwards";
+                document.getElementById("stars-container").appendChild(star);
+                setTimeout(() => star.remove(), 4000);
+            }, 200);
+        }
+    </script>
+</body>
+</html>

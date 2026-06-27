@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego: Higiene Bucal</title>
+    <style>
+        :root {
+            --primary: #4A90E2;
+            --secondary: #50E3C2;
+            --background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            --text: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            touch-action: none; /* Prevent scrolling during drag */
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .screen.active {
+            display: flex;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Glassmorphism panel */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+            width: 400px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+
+        p {
+            font-size: 18px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            color: #444;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Game Area Layout */
+        #game-screen {
+            justify-content: flex-start;
+            padding-top: 40px;
+        }
+
+        .instruction-box {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 15px 25px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 20px;
+            color: #1a5276;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            max-width: 90%;
+            transition: all 0.3s;
+        }
+
+        /* Mouth & Teeth */
+        .mouth-container {
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .mouth {
+            width: 280px;
+            height: 180px;
+            background: #4a0d0d;
+            border-radius: 50% 50% 40% 40%;
+            position: relative;
+            overflow: hidden;
+            border: 6px solid #e06f6f;
+            box-shadow: inset 0 20px 40px rgba(0,0,0,0.6), 0 10px 20px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+
+        .teeth-row {
+            position: absolute;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .teeth-top { top: -2px; height: 50px; }
+        .teeth-bottom { bottom: -2px; height: 50px; }
+
+        .tooth {
+            width: 35px;
+            background: #fff;
+            border: 1px solid #ccc;
+            position: relative;
+        }
+
+        .teeth-top .tooth { border-radius: 0 0 12px 12px; }
+        .teeth-bottom .tooth { border-radius: 12px 12px 0 0; }
+
+        .tongue {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 120px;
+            background: #ff768e;
+            border-radius: 50%;
+            box-shadow: inset 0 15px 25px rgba(0,0,0,0.3);
+            border: 2px solid #e25872;
+        }
+
+        /* Dirt classes */
+        .dirt {
+            position: absolute;
+            background-image: radial-gradient(#6d9620 20%, #4b6b12 80%);
+            border-radius: 50%;
+            opacity: 0.9;
+            pointer-events: none; /* Let touches pass through */
+            transition: opacity 0.1s;
+        }
+        
+        .dirt.tongue-dirt {
+            background-image: radial-gradient(#8fba3a 20%, #648a1d 80%);
+        }
+
+        /* Tool shelf */
+        .tools-shelf {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 40px;
+            display: flex;
+            gap: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+            z-index: 100;
+        }
+
+        /* Tools */
+        .tool {
+            width: 70px;
+            height: 70px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            cursor: grab;
+            position: relative;
+            touch-action: none;
+            transition: transform 0.2s, opacity 0.3s;
+        }
+        
+        .tool:active { cursor: grabbing; }
+
+        .tool.draggable {
+            z-index: 1000;
+        }
+
+        .tool.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+
+        .tool.dragging {
+            position: fixed;
+            pointer-events: none; /* Required for document.elementFromPoint to work */
+            transform: scale(1.2);
+            transition: none; /* remove transition when following pointer */
+            box-shadow: 0 15px 25px rgba(0,0,0,0.3);
+        }
+
+        /* Paste on brush indicator */
+        .paste-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 25px;
+            display: none;
+        }
+        
+        .tool.has-paste .paste-indicator { display: block; }
+        
+        /* Water splash effect */
+        .splash {
+            position: absolute;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            background: #50e3c2;
+            opacity: 0;
+            transform: scale(0);
+            pointer-events: none;
+            animation: splashAnim 0.6s ease-out;
+        }
+        
+        @keyframes splashAnim {
+            0% { opacity: 0.8; transform: scale(0.5); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+
+        /* Confetti Canvas */
+        #confetti {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Intro Screen -->
+    <div id="intro-screen" class="screen active">
+        <div class="glass-panel">
+            <h1>✨ Higiene Bucal Divertida</h1>
+            <p>Aprenderemos paso a paso cómo dejar nuestros dientes brillantes y saludables.<br><br>¡El cuidado de nuestra salud empieza por una sonrisa limpia!</p>
+            <button class="btn" onclick="startGame()">¡JUGAR AHORA!</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="instruction-box" id="instruction-text">
+            Cargando...
+        </div>
+
+        <div class="mouth-container">
+            <div class="mouth" id="mouth">
+                <div class="teeth-row teeth-top" id="teeth-top">
+                    <!-- Teeth generated by JS -->
+                </div>
+                <div class="teeth-row teeth-bottom" id="teeth-bottom">
+                    <!-- Teeth generated by JS -->
+                </div>
+                <div class="tongue" id="tongue"></div>
+            </div>
+        </div>
+
+        <div class="tools-shelf" id="tools-shelf">
+            <div class="tool disabled" id="water" data-id="water">💧</div>
+            <div class="tool disabled" id="toothpaste" data-id="toothpaste">🧴</div>
+            <div class="tool disabled" id="toothbrush" data-id="toothbrush">
+                🪥
+                <div class="paste-indicator">🫧</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outro Screen -->
+    <div id="outro-screen" class="screen">
+        <div class="glass-panel">
+            <h1>¡Felicidades! 🎉</h1>
+            <p>¡Has dejado la boca impecable!<br><br>Al llevar a cabo estas acciones de higiene, contribuyes al cuidado de tu salud personal y la de tu comunidad, basándote en los saberes prácticos y la ciencia.<br><br>¡Recuerda hacerlo después de cada comida!</p>
+            <button class="btn" onclick="location.reload()">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <canvas id="confetti"></canvas>
+
+    <script>
+        // Game State
+        let currentStep = 0;
+        let activeToolId = null;
+        let isDragging = false;
+        let draggedElement = null;
+        let originalParent = null;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        
+        let targetDirtList = []; // For brushing phase
+
+        // Steps Configuration
+        const steps = [
+            {
+                id: "rinse_brush",
+                instruction: "1. ¡Enjuaga tu cepillo con agua!",
+                activeTools: ["water"], // Tool that can be dragged
+                targetTarget: "toothbrush", // Element it must be dropped on
+                checkType: "drop",
+                onComplete: () => {
+                    playSplash("toothbrush");
+                }
+            },
+            {
+                id: "apply_paste",
+                instruction: "2. ¡Ponle pasta de dientes al cepillo!",
+                activeTools: ["toothpaste"],
+                targetTarget: "toothbrush",
+                checkType: "drop",
+                onComplete: () => {
+                    document.getElementById("toothbrush").classList.add("has-paste");
+                }
+            },
+            {
+                id: "brush_teeth",
+                instruction: "3. ¡Frota el cepillo sobre los dientes para quitar la mugre!",
+                activeTools: ["toothbrush"],
+                targetTarget: "dirt-tooth",
+                checkType: "scrub"
+            },
+            {
+                id: "brush_tongue",
+                instruction: "4. ¡No olvides frotar la lengua para limpiarla!",
+                activeTools: ["toothbrush"],
+                targetTarget: "dirt-tongue",
+                checkType: "scrub"
+            },
+            {
+                id: "rinse_mouth",
+                instruction: "5. ¡Por último, enjuaga la boca con el agua!",
+                activeTools: ["water"],
+                targetTarget: "mouth",
+                checkType: "drop",
+                onComplete: () => {
+                    playSplash("mouth");
+                    document.getElementById("toothbrush").classList.remove("has-paste");
+                }
+            }
+        ];
+
+        // Initialization
+        function startGame() {
+            document.getElementById("intro-screen").classList.remove("active");
+            document.getElementById("game-screen").classList.add("active");
+            
+            buildMouth();
+            loadStep(0);
+            setupDragAndDrop();
+        }
+
+        function buildMouth() {
+            const topRow = document.getElementById("teeth-top");
+            const bottomRow = document.getElementById("teeth-bottom");
+            const tongue = document.getElementById("tongue");
+
+            // Create teeth
+            for(let i=0; i<6; i++) {
+                const toothTop = document.createElement("div");
+                toothTop.className = "tooth";
+                topRow.appendChild(toothTop);
+                
+                // Add dirt to teeth randomly
+                addDirt(toothTop, "dirt-tooth", 15);
+
+                const toothBottom = document.createElement("div");
+                toothBottom.className = "tooth";
+                bottomRow.appendChild(toothBottom);
+                addDirt(toothBottom, "dirt-tooth", 15);
+            }
+
+            // Add dirt to tongue
+            for(let i=0; i<8; i++) {
+                addDirt(tongue, "dirt-tongue", 20);
+            }
+        }
+
+        function addDirt(parent, className, size) {
+            const dirt = document.createElement("div");
+            dirt.className = `dirt ${className}`;
+            dirt.style.width = size + "px";
+            dirt.style.height = size + "px";
+            
+            // Random position inside parent
+            const pRect = parent.getBoundingClientRect();
+            // Since elements might not be rendered fully yet, we estimate based on CSS
+            let left = Math.random() * (parent.className === "tooth" ? 15 : 100);
+            let top = Math.random() * (parent.className === "tooth" ? 20 : 60);
+            
+            if(parent.id === "tongue") {
+                left += 20; // offset inside tongue
+                top += 20;
+            }
+
+            dirt.style.left = left + "px";
+            dirt.style.top = top + "px";
+            // Initialize scrub health
+            dirt.dataset.health = 100;
+            
+            parent.appendChild(dirt);
+        }
+
+        function loadStep(index) {
+            if(index >= steps.length) {
+                endGame();
+                return;
+            }
+            
+            currentStep = index;
+            const step = steps[currentStep];
+            
+            // Update UI
+            const instructionBox = document.getElementById("instruction-text");
+            instructionBox.style.transform = "scale(1.1)";
+            setTimeout(()=> instructionBox.style.transform = "scale(1)", 200);
+            instructionBox.innerText = step.instruction;
+
+            // Update Tools
+            document.querySelectorAll(".tool").forEach(tool => {
+                if(step.activeTools.includes(tool.id)) {
+                    tool.classList.remove("disabled");
+                    tool.classList.add("draggable");
+                } else {
+                    tool.classList.add("disabled");
+                    tool.classList.remove("draggable");
+                }
+            });
+
+            // Gather active dirt for scrubbing phases
+            if(step.checkType === "scrub") {
+                targetDirtList = Array.from(document.querySelectorAll(`.${step.targetTarget}`));
+            }
+        }
+
+        function playSplash(targetId) {
+            const target = document.getElementById(targetId);
+            const splash = document.createElement("div");
+            splash.className = "splash";
+            target.appendChild(splash);
+            setTimeout(() => splash.remove(), 600);
+        }
+
+        // --- Drag and Drop Logic --- //
+
+        function setupDragAndDrop() {
+            const tools = document.querySelectorAll(".tool");
+            tools.forEach(tool => {
+                // Mouse events
+                tool.addEventListener("mousedown", onDragStart, {passive: false});
+                // Touch events
+                tool.addEventListener("touchstart", onDragStart, {passive: false});
+            });
+
+            document.addEventListener("mousemove", onDragMove, {passive: false});
+            document.addEventListener("touchmove", onDragMove, {passive: false});
+
+            document.addEventListener("mouseup", onDragEnd);
+            document.addEventListener("touchend", onDragEnd);
+        }
+
+        function onDragStart(e) {
+            const target = e.target.closest('.tool');
+            if(!target || !target.classList.contains("draggable")) return;
+
+            e.preventDefault(); // Prevent default touch actions like scroll
+            
+            isDragging = true;
+            draggedElement = target;
+            originalParent = target.parentNode;
+
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            const rect = target.getBoundingClientRect();
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
+
+            // Prepare for absolute positioning
+            target.style.width = target.offsetWidth + 'px';
+            target.style.height = target.offsetHeight + 'px';
+            
+            // Move to body so it floats above everything
+            document.body.appendChild(target);
+            target.classList.add("dragging");
+
+            positionDraggedElement(clientX, clientY);
+        }
+
+        function onDragMove(e) {
+            if(!isDragging || !draggedElement) return;
+            e.preventDefault(); // crucial for touch
+
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            positionDraggedElement(clientX, clientY);
+
+            // Handle "Scrubbing" logic if in a scrub step
+            const step = steps[currentStep];
+            if(step && step.checkType === "scrub") {
+                checkScrubbing();
+            }
+        }
+
+        function positionDraggedElement(x, y) {
+            draggedElement.style.left = (x - dragOffsetX) + 'px';
+            draggedElement.style.top = (y - dragOffsetY) + 'px';
+        }
+
+        function onDragEnd(e) {
+            if(!isDragging || !draggedElement) return;
+            
+            const step = steps[currentStep];
+            
+            // Use elements bounding box center to check drop target
+            const rect = draggedElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            // Temporarily hide dragged element to find what's underneath
+            draggedElement.style.display = 'none';
+            const dropTarget = document.elementFromPoint(centerX, centerY);
+            draggedElement.style.display = 'flex'; // restore
+
+            let success = false;
+
+            if(step && step.checkType === "drop" && dropTarget) {
+                // Determine if dropTarget or its parent is the intended target string ID
+                const isTarget = dropTarget.closest(`#${step.targetTarget}`);
+                if(isTarget) {
+                    success = true;
+                    if(step.onComplete) step.onComplete();
+                    loadStep(currentStep + 1);
+                }
+            }
+
+            // Always reset position visually (snap back to shelf)
+            resetDraggedElement();
+            isDragging = false;
+            draggedElement = null;
+        }
+
+        function resetDraggedElement() {
+            draggedElement.classList.remove("dragging");
+            draggedElement.style.position = '';
+            draggedElement.style.left = '';
+            draggedElement.style.top = '';
+            draggedElement.style.width = '';
+            draggedElement.style.height = '';
+            originalParent.appendChild(draggedElement);
+        }
+
+        // --- Scrubbing Collision --- //
+        
+        function checkScrubbing() {
+            if(targetDirtList.length === 0) return;
+            
+            const brushRect = draggedElement.getBoundingClientRect();
+            let remainingDirt = 0;
+
+            targetDirtList.forEach((dirt) => {
+                if(dirt.style.display === "none") return;
+                
+                const dirtRect = dirt.getBoundingClientRect();
+                
+                // Check intersection
+                if (brushRect.left < dirtRect.right && 
+                    brushRect.right > dirtRect.left && 
+                    brushRect.top < dirtRect.bottom && 
+                    brushRect.bottom > dirtRect.top) {
+                    
+                    // Reduce health
+                    let health = parseFloat(dirt.dataset.health) - 10;
+                    dirt.dataset.health = health;
+                    dirt.style.opacity = (health / 100).toString();
+                    
+                    if(health <= 0) {
+                        dirt.style.display = "none";
+                    } else {
+                        remainingDirt++;
+                    }
+                } else {
+                    remainingDirt++;
+                }
+            });
+
+            if(remainingDirt === 0) {
+                // Done scrubbing
+                targetDirtList = [];
+                const step = steps[currentStep];
+                
+                // IMPORTANT: Reset dragged element manually here so it snaps back 
+                // and user must drag again for the next step.
+                resetDraggedElement();
+                isDragging = false;
+                draggedElement = null;
+
+                if(step.onComplete) step.onComplete();
+                loadStep(currentStep + 1);
+            }
+        }
+
+        // --- End Screen & Confetti --- //
+
+        function endGame() {
+            document.getElementById("game-screen").classList.remove("active");
+            document.getElementById("outro-screen").classList.add("active");
+            showConfetti();
+        }
+
+        // Simple Confetti
+        function showConfetti() {
+            const canvas = document.getElementById('confetti');
+            canvas.style.display = 'block';
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            let particles = [];
+            let colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+            
+            for(let i=0; i<100; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    weight: Math.random() * 2 + 1,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+            
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for(let i=0; i<particles.length; i++) {
+                    let p = particles[i];
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, 8, 8);
+                    p.y += p.weight;
+                    if(p.y > canvas.height) p.y = -10;
+                }
+                requestAnimationFrame(render);
+            }
+            render();
+        }
+    </script>
+</body>
+</html>
